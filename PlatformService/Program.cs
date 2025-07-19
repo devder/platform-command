@@ -15,6 +15,10 @@ if (environment.IsProduction())
     Console.WriteLine("--> Using SqlServer Db");
     // builder.Services.AddDbContext<AppDbContext>(opt =>
     //     opt.UseSqlServer(configuration.GetConnectionString("PlatformsConn")));
+
+    // TODO: Remove
+    Console.WriteLine("--> Using InMem Db Temporarily");
+    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("InMem"));
 }
 else
 {

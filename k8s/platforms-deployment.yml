@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platforms-deployment
+  labels:
+    app: platforms-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: platforms-api
+  template:
+    metadata:
+      labels:
+        app: platforms-api
+    spec:
+      containers:
+        - name: platforms-api
+          image: devder/platform-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
