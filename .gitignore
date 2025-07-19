@@ -1,0 +1,50 @@
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code settings
+.vscode/
+
+# ASP.NET temporary files
+*.vspscc
+*.vssscc
+
+# NuGet packages
+*.nupkg
+packages/
+*.snupkg
+
+# Dotnet CLI
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Logs
+*.log
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# Publish output
+publish/
+out/
+
+# Rider IDE files
+.idea/
+
+# Mac system files
+.DS_Store
+
+# Others
+*.dbmdl
+*.pdb
+GameStore.db*
