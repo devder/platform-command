@@ -3,15 +3,18 @@ using Microsoft.AspNetCore.Mvc;
 using PlatformService.Data;
 using PlatformService.Dtos;
 using PlatformService.Models;
+using PlatformService.SyncDataServices.Http;
 
 namespace PlatformService.Controllers;
 
 [Route("api/[controller]")] // this will take the name of the class except the xxx"Controller" suffix
 [ApiController]
-public class PlatformsController(IPlatformRepo repository, IMapper mapper) : ControllerBase
+public class PlatformsController(
+    IPlatformRepo repository,
+    IMapper mapper,
+    ICommandDataClient commandDataClient
+) : ControllerBase
 {
-    private readonly IPlatformRepo _repository = repository;
-    private readonly IMapper _mapper = mapper;
     const string _getPlatformByIdName = "GetPlatformById";
 
     [HttpGet]
@@ -19,9 +22,9 @@ public class PlatformsController(IPlatformRepo repository, IMapper mapper) : Con
     {
         Console.WriteLine("--> Getting Platforms");
 
-        var platformItems = await _repository.GetAllPlatforms();
+        var platformItems = await repository.GetAllPlatforms();
 
-        return Ok(_mapper.Map<List<PlatformReadDto>>(platformItems));
+        return Ok(mapper.Map<List<PlatformReadDto>>(platformItems));
     }
 
     [HttpGet("{id}", Name = _getPlatformByIdName)]
@@ -29,14 +32,14 @@ public class PlatformsController(IPlatformRepo repository, IMapper mapper) : Con
     {
         Console.WriteLine("--> Getting Platform By Id for {0}", id);
 
-        var platformItem = await _repository.GetPlatformById(id);
+        var platformItem = await repository.GetPlatformById(id);
 
         if (platformItem is null)
         {
             return NotFound();
         }
 
-        return Ok(_mapper.Map<PlatformReadDto>(platformItem));
+        return Ok(mapper.Map<PlatformReadDto>(platformItem));
     }
 
     [HttpPost]
@@ -46,11 +49,20 @@ public class PlatformsController(IPlatformRepo repository, IMapper mapper) : Con
     {
         Console.WriteLine("--> Creating Platform {0}", platformCreateDto);
 
-        var platformModel = _mapper.Map<Platform>(platformCreateDto);
-        await _repository.CreatePlatform(platformModel);
-        _repository.SaveChanges();
+        var platformModel = mapper.Map<Platform>(platformCreateDto);
+        await repository.CreatePlatform(platformModel);
+        repository.SaveChanges();
 
-        var platformReadDto = _mapper.Map<PlatformReadDto>(platformModel);
+        var platformReadDto = mapper.Map<PlatformReadDto>(platformModel);
+        try
+        {
+            await commandDataClient.SendPlatformToCommand(platformReadDto);
+            Console.WriteLine("Sent to CommandService");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"--> Could not send synchronously: {e.Message}");
+        }
         return CreatedAtRoute(
             nameof(GetPlatformById),
             new { Id = platformReadDto.Id },

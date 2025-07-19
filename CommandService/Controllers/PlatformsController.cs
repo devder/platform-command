@@ -6,7 +6,7 @@ namespace CommandService.Controllers
     [ApiController]
     public class PlatformsController : ControllerBase
     {
-        [HttpGet]
+        [HttpPost]
         public ActionResult TestInboundConnection()
         {
             Console.WriteLine("--> Hit me");

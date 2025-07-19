@@ -1,7 +1,9 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using PlatformService.Data;
 using PlatformService.Profiles;
+using PlatformService.SyncDataServices.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,8 +30,8 @@ else
 
 // DI registrations
 builder.Services.AddScoped<IPlatformRepo, PlatformRepo>(); // register this for dependency injection
+builder.Services.AddHttpClient<ICommandDataClient, HttpCommandDataClient>();
 
-// builder.Services.AddHttpClient<ICommandDataClient, HttpCommandDataClient>();
 // builder.Services.AddSingleton<IMessageBusClient, MessageBusClient>();
 // builder.Services.AddGrpc();
 builder.Services.AddOpenApi();
@@ -72,8 +74,6 @@ app.MapGet(
         await context.Response.WriteAsync(File.ReadAllText("Protos/platforms.proto"));
     }
 );
-
-app.MapGet("/hello", () => "Hello World!");
 
 // app.UseEndpoints(endpoints =>
 // {
