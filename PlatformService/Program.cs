@@ -49,8 +49,6 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "PlatformService", Version = "v1" });
 });
 
-Console.WriteLine($"--> CommandService Endpoint {configuration["CommandService"]}");
-
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

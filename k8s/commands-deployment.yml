@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: platforms-deployment
+  name: commands-deployment
   labels:
-    app: platforms-api
+    app: commands-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: platforms-api
+      app: commands-api
   template:
     metadata:
       labels:
-        app: platforms-api
+        app: commands-api
     spec:
       containers:
-        - name: platforms-api
-          image: devder/platform-service:latest
+        - name: commands-api
+          image: devder/command-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
@@ -25,19 +25,19 @@ spec:
             - name: ASPNETCORE_ENVIRONMENT
               value: "Production"
 
-# Create a ClusterIP service for the platforms API
+# Create a ClusterIP service for the commands API
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: platforms-clusterip-srv
+  name: commands-clusterip-srv
   labels:
-    app: platforms-api
+    app: commands-api
 spec:
   selector:
-    app: platforms-api
+    app: commands-api
   ports:
-    - name: platforms-api
+    - name: commands-api
       protocol: TCP
       port: 80
       targetPort: http
