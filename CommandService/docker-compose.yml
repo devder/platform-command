@@ -3,6 +3,10 @@ networks:
     name: les-network
     external: true
 
+volumes:
+  bin-data:
+  obj-data:
+
 services:
   app:
     build:
@@ -11,8 +15,8 @@ services:
     container_name: les_command_service
     volumes:
       - .:/app
-      - /app/bin
-      - /app/obj
+      - bin-data:/app/bin
+      - obj-data:/app/obj
     ports:
       - "9090:80"
     environment:

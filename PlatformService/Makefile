@@ -10,4 +10,10 @@ run_image:
 gen_secret:
 	kubectl create secret generic mssql --from-literal=SA_PASSWORD=$(password)
 
-.PHONY: build_image push_image run_image
+new_migration:
+	dotnet ef migrations add $(name) --output-dir Data/Migrations
+
+migrateup:
+	dotnet ef database update
+
+.PHONY: build_image push_image run_image new_migration migrateup

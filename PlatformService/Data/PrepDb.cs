@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using PlatformService.Models;
 
 namespace PlatformService.Data;
@@ -8,6 +9,19 @@ public static class PrepDb
     {
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        bool isProd = app.Environment.IsProduction();
+        if (isProd)
+        {
+            Console.WriteLine("--> Attempting to apply migrations..");
+            try
+            {
+                await dbContext.Database.MigrateAsync();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Could not run migrations: {e.Message}");
+            }
+        }
         if (!dbContext.Platforms.Any())
         {
             Console.WriteLine("--> Seeding data...");

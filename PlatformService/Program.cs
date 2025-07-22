@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using PlatformService.Data;
@@ -15,12 +14,9 @@ var environment = builder.Environment;
 if (environment.IsProduction())
 {
     Console.WriteLine("--> Using SqlServer Db");
-    // builder.Services.AddDbContext<AppDbContext>(opt =>
-    //     opt.UseSqlServer(configuration.GetConnectionString("PlatformsConn")));
-
-    // TODO: Remove
-    Console.WriteLine("--> Using InMem Db Temporarily");
-    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("InMem"));
+    builder.Services.AddDbContext<AppDbContext>(opt =>
+        opt.UseSqlServer(configuration.GetConnectionString("PlatformsConn"))
+    );
 }
 else
 {
@@ -88,7 +84,7 @@ app.MapGet(
 // });
 app.MapControllers();
 
-await PrepDb.MigrateDbAsync(app);
+await app.MigrateDbAsync();
 
 app.Run();
 
