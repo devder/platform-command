@@ -16,4 +16,7 @@ new_migration:
 migrateup:
 	dotnet ef database update
 
-.PHONY: build_image push_image run_image new_migration migrateup
+restart_deployment:
+	kubectl rollout restart deployment platforms-deployment
+
+.PHONY: build_image push_image run_image new_migration migrateup restart_deployment
