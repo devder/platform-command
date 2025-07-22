@@ -7,4 +7,7 @@ push_image: build_image
 run_image:
 	docker run --name platform-service -p 8080:8080 devder/platform-service:latest
 
+gen_secret:
+	kubectl create secret generic mssql --from-literal=SA_PASSWORD=$(password)
+
 .PHONY: build_image push_image run_image
