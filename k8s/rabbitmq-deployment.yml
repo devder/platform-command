@@ -41,7 +41,6 @@ spec:
       protocol: TCP
       port: 5672
       targetPort: rbmq-msg-port
-
 ---
 apiVersion: v1
 kind: Service
