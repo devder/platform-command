@@ -1,3 +1,5 @@
+using CommandService.Data;
+using CommandService.Profiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
@@ -8,19 +10,28 @@ var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 var environment = builder.Environment;
 
-Console.WriteLine("--> Using InMem Db");
-
-// builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("InMem"));
+if (environment.IsProduction())
+{
+    Console.WriteLine("--> Using SqlServer Db");
+    // builder.Services.AddDbContext<AppDbContext>(opt =>
+    //     opt.UseSqlServer(configuration.GetConnectionString("PlatformsConn"))
+    // );
+}
+else
+{
+    Console.WriteLine("--> Using InMem Db");
+    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("InMem"));
+}
 
 // DI registrations
-// builder.Services.AddScoped<IPlatformRepo, PlatformRepo>(); // register this for dependency injection
+builder.Services.AddScoped<ICommandRepo, CommandRepo>(); // register this for dependency injection
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
 builder.Services.AddAutoMapper(cfg =>
 {
-    // cfg.AddProfile<PlatformsProfile>();
+    cfg.AddProfile<CommandsProfile>();
 });
 
 // Swagger
