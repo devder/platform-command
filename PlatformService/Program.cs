@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using PlatformService.AsyncDataServices;
 using PlatformService.Data;
 using PlatformService.Profiles;
 using PlatformService.SyncDataServices.Http;
@@ -28,8 +29,8 @@ else
 builder.Services.AddScoped<IPlatformRepo, PlatformRepo>(); // register this for dependency injection
 builder.Services.AddHttpClient<ICommandDataClient, HttpCommandDataClient>();
 
-// builder.Services.AddSingleton<IMessageBusClient, MessageBusClient>();
 // builder.Services.AddGrpc();
+builder.Services.AddSingleton<IMessageBusClient, MessageBusClient>();
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
