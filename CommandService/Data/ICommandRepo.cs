@@ -10,6 +10,7 @@ public interface ICommandRepo
     Task<List<Platform>> GetAllPlatforms();
     Task<Platform> CreatePlatform(Platform platform);
     Task<bool> PlatformExists(int platformId);
+    Task<bool> ExternalPlatformExists(int externalPlatformId);
 
     // Commands
     Task<List<Command>> GetCommandsForPlatform(int platformId);
