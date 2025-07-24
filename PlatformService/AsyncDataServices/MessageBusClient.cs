@@ -38,12 +38,7 @@ public class MessageBusClient : IMessageBusClient, IDisposable
 
             // Declare exchange
             _channel
-                .ExchangeDeclareAsync(
-                    exchange: _exchangeName,
-                    type: ExchangeType.Fanout,
-                    durable: false,
-                    autoDelete: false
-                )
+                .ExchangeDeclareAsync(exchange: _exchangeName, type: ExchangeType.Fanout)
                 .GetAwaiter()
                 .GetResult();
 
@@ -79,13 +74,15 @@ public class MessageBusClient : IMessageBusClient, IDisposable
             return;
         }
 
+        _logger.LogInformation("RabbitMQ connection is open, sending..");
+
         try
         {
             var body = Encoding.UTF8.GetBytes(message);
 
             await _channel.BasicPublishAsync(
                 exchange: _exchangeName,
-                routingKey: string.Empty,
+                routingKey: string.Empty, // bc we are using the fan out pattern
                 body: body
             );
 
