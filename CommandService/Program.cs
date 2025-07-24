@@ -1,4 +1,5 @@
 using CommandService.Data;
+using CommandService.EventProcessing;
 using CommandService.Profiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -28,6 +29,7 @@ builder.Services.AddScoped<ICommandRepo, CommandRepo>(); // register this for de
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
+builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
 
 builder.Services.AddAutoMapper(cfg =>
 {
