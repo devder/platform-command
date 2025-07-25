@@ -22,7 +22,7 @@ namespace CommandService.Controllers
                 return NotFound();
             }
 
-            var commands = commandRepo.GetCommandsForPlatform(platformId);
+            var commands = await commandRepo.GetCommandsForPlatform(platformId);
 
             return Ok(mapper.Map<List<CommandReadDto>>(commands));
         }

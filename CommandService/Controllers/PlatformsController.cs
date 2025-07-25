@@ -21,7 +21,7 @@ namespace CommandService.Controllers
         [HttpPost]
         public ActionResult TestInboundConnection()
         {
-            Console.WriteLine("--> Hit me");
+            Console.WriteLine("--> Inbound POST # command");
             return Ok("Inbound test okay, but not refresh?");
         }
     }

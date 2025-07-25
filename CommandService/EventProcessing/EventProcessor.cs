@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Threading.Tasks;
 using AutoMapper;
 using CommandService.Data;
 using CommandService.Dtos;
@@ -9,13 +10,13 @@ namespace CommandService.EventProcessing;
 public class EventProcessor(IServiceScopeFactory serviceScopeFactory, IMapper mapper)
     : IEventProcessor
 {
-    public void ProcessEvent(string message)
+    public async Task ProcessEvent(string message)
     {
         var eventType = DetermineEvent(message);
         switch (eventType)
         {
             case EventType.PlatformPublished:
-                //
+                await AddPlatformAsync(message);
                 break;
             default:
                 break;
@@ -30,7 +31,7 @@ public class EventProcessor(IServiceScopeFactory serviceScopeFactory, IMapper ma
         switch (eventType?.Event)
         {
             case "Platform_Published":
-                Console.WriteLine("Platform Published Event Detected");
+                Console.WriteLine("--> Platform Published Event Detected");
                 return EventType.PlatformPublished;
             default:
                 Console.WriteLine("--> Could not determine the event type");

@@ -14,7 +14,7 @@ public class MessageBusSubscriber : BackgroundService
     private readonly IConnection? _connection;
     private readonly IChannel? _channel;
     private bool _disposed = false;
-    private string _queueName;
+    private readonly string _queueName;
 
     public MessageBusSubscriber(
         IConfiguration configuration,
@@ -50,7 +50,7 @@ public class MessageBusSubscriber : BackgroundService
             _queueName = _channel.QueueDeclareAsync().GetAwaiter().GetResult().QueueName;
             _channel.QueueBindAsync(_queueName, _exchangeName, "");
 
-            _logger.LogInformation("--> Listening on the Message bus");
+            Console.WriteLine("--> ✅ Listening on the Message bus");
 
             _connection.ConnectionShutdownAsync += OnConnectionShutdown;
         }
@@ -67,11 +67,11 @@ public class MessageBusSubscriber : BackgroundService
         var consumer = new AsyncEventingBasicConsumer(_channel!);
         consumer.ReceivedAsync += async (ModuleHandle, ea) =>
         {
-            _logger.LogInformation("--> Event Received");
+            Console.WriteLine("--> Event Received");
             var body = ea.Body;
             var notificationMessage = Encoding.UTF8.GetString(body.ToArray());
 
-            _eventProcessor.ProcessEvent(notificationMessage);
+            await _eventProcessor.ProcessEvent(notificationMessage);
             await Task.CompletedTask;
         };
 
@@ -82,7 +82,7 @@ public class MessageBusSubscriber : BackgroundService
 
     private Task OnConnectionShutdown(object sender, ShutdownEventArgs args)
     {
-        _logger.LogInformation("--> Connection shut down: {0}", args.ReplyText);
+        Console.WriteLine("--> Connection shut down: {0}", args.ReplyText);
         return Task.CompletedTask;
     }
 
@@ -96,11 +96,15 @@ public class MessageBusSubscriber : BackgroundService
                 _connection?.CloseAsync().GetAwaiter().GetResult();
                 _channel?.Dispose();
                 _connection?.Dispose();
-                _logger.LogInformation("MessageBusSubscriber disposed");
+                Console.WriteLine("--> MessageBusSubscriber disposed");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error disposing MessageBusSubscriber: {Message}", ex.Message);
+                _logger.LogError(
+                    ex,
+                    "--> Error disposing MessageBusSubscriber: {Message}",
+                    ex.Message
+                );
             }
             finally
             {
