@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Threading.Tasks;
 using AutoMapper;
 using CommandService.Data;
 using CommandService.Dtos;
@@ -53,7 +52,7 @@ public class EventProcessor(IServiceScopeFactory serviceScopeFactory, IMapper ma
             {
                 await repo.CreatePlatform(platform);
                 repo.SaveChanges();
-                Console.WriteLine("New Platform added");
+                Console.WriteLine("--> New Platform added");
             }
             else
             {

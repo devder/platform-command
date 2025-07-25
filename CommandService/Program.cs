@@ -12,18 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 var environment = builder.Environment;
 
-if (environment.IsProduction())
-{
-    Console.WriteLine("--> Using SqlServer Db");
-    // builder.Services.AddDbContext<AppDbContext>(opt =>
-    //     opt.UseSqlServer(configuration.GetConnectionString("PlatformsConn"))
-    // );
-}
-else
-{
-    Console.WriteLine("--> Using InMem Db");
-    builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("InMem"));
-}
+Console.WriteLine("--> Using InMem Db");
+builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("InMem"));
 
 // DI registrations
 builder.Services.AddScoped<ICommandRepo, CommandRepo>(); // register this for dependency injection

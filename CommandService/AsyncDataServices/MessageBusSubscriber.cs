@@ -1,5 +1,4 @@
 using System.Text;
-using System.Threading.Tasks;
 using CommandService.EventProcessing;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
