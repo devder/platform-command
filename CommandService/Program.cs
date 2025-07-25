@@ -1,3 +1,4 @@
+using CommandService.AsyncDataServices;
 using CommandService.Data;
 using CommandService.EventProcessing;
 using CommandService.Profiles;
@@ -29,6 +30,7 @@ builder.Services.AddScoped<ICommandRepo, CommandRepo>(); // register this for de
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
+builder.Services.AddHostedService<MessageBusSubscriber>();
 builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
 
 builder.Services.AddAutoMapper(cfg =>

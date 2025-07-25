@@ -8,7 +8,6 @@ namespace PlatformService.AsyncDataServices;
 
 public class MessageBusClient : IMessageBusClient, IDisposable
 {
-    private readonly IConfiguration _configuration;
     private readonly ILogger<MessageBusClient> _logger;
     private readonly IConnection _connection;
     private readonly IChannel _channel;
@@ -17,16 +16,15 @@ public class MessageBusClient : IMessageBusClient, IDisposable
 
     public MessageBusClient(IConfiguration configuration, ILogger<MessageBusClient> logger)
     {
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         var factory = new ConnectionFactory
         {
-            HostName = _configuration["RabbitMQHost"] ?? "localhost",
-            Port = int.TryParse(_configuration["RabbitMQPort"], out int port) ? port : 5672,
-            UserName = _configuration["RabbitMQUser"] ?? "guest",
-            Password = _configuration["RabbitMQPassword"] ?? "guest",
-            VirtualHost = _configuration["RabbitMQVirtualHost"] ?? "/",
+            HostName = configuration["RabbitMQHost"] ?? "localhost",
+            Port = int.TryParse(configuration["RabbitMQPort"], out int port) ? port : 5672,
+            UserName = configuration["RabbitMQUser"] ?? "guest",
+            Password = configuration["RabbitMQPassword"] ?? "guest",
+            VirtualHost = configuration["RabbitMQVirtualHost"] ?? "/",
             AutomaticRecoveryEnabled = true,
             NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
         };
