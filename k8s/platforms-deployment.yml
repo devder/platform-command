@@ -21,6 +21,8 @@ spec:
           ports:
             - containerPort: 8080
               name: http
+            - containerPort: 9090
+              name: grpc
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: "Production"
@@ -39,5 +41,24 @@ spec:
   ports:
     - name: platforms-api
       protocol: TCP
+      port: 80
+      targetPort: http
+    - name: platforms-grpc
+      protocol: TCP
+      port: 90
+      targetPort: grpc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platforms-service
+  labels:
+    app: platforms-api
+spec:
+  type: NodePort
+  selector:
+    app: platforms-api
+  ports:
+    - protocol: TCP
       port: 80
       targetPort: http
