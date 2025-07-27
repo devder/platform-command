@@ -1,5 +1,5 @@
 build_image:
-	docker build -t devder/command-service:latest -f Dockerfile .
+	docker build --platform=linux/amd64 -t devder/command-service:latest -f Dockerfile .
 
 push_image: build_image
 	docker push devder/command-service:latest
