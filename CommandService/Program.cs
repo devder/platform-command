@@ -2,6 +2,7 @@ using CommandService.AsyncDataServices;
 using CommandService.Data;
 using CommandService.EventProcessing;
 using CommandService.Profiles;
+using CommandService.SyncDataServices.Grpc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
@@ -17,12 +18,12 @@ builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("InMe
 
 // DI registrations
 builder.Services.AddScoped<ICommandRepo, CommandRepo>(); // register this for dependency injection
+builder.Services.AddScoped<IPlatformDataClient, PlatformDataClient>();
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.Services.AddHostedService<MessageBusSubscriber>();
 builder.Services.AddSingleton<IEventProcessor, EventProcessor>();
-
 builder.Services.AddAutoMapper(cfg =>
 {
     cfg.AddProfile<CommandsProfile>();
@@ -48,5 +49,6 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
 app.UseAuthorization();
 app.MapControllers();
+await app.PrepPopulation();
 
 app.Run();

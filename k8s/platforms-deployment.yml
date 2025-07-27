@@ -19,9 +19,9 @@ spec:
           image: devder/platform-service:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - containerPort: 80
               name: http
-            - containerPort: 9090
+            - containerPort: 90
               name: grpc
           env:
             - name: ASPNETCORE_ENVIRONMENT
