@@ -43,7 +43,7 @@ log() { printf "\033[0;32m[pre-push] %s\033[0m\n" "$*" >&2; }
 debug() {
   [[ "$VERBOSE" == "1" ]] && printf "\033[0;33m[pre-push] %s\033[0m\n" "$*" >&2 || true
 }
-error(){ printf "\033[0;31m%s\033[0m\n" "$*" >&2; }
+error(){ printf "\033[0;31m[pre-push] %s\033[0m\n" "$*" >&2; }
 
 # Create temp file
 create_temp() {
@@ -306,7 +306,6 @@ for i in "${!pids[@]}"; do
   lbl="${names[$i]}"
   
   if ! wait "$pid"; then
-    log "❌ $lbl: failed"
     failed_tasks+=("$lbl")
     fail=1
   else
@@ -316,7 +315,7 @@ done
 
 # Final status
 if [[ $fail -ne 0 ]]; then
-  error "One or more checks failed:"
+  error "❌ One or more checks failed:"
   for task in "${failed_tasks[@]}"; do
     error "  - $task"
   done
