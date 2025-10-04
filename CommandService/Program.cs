@@ -35,7 +35,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "CommandService", Version = "v1" });
 });
 
-// var app = builder.Build();
+var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
