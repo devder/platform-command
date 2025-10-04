@@ -1,0 +1,346 @@
+#!/usr/bin/env bash
+# Runs selective tests/lints for changed apps on pre-push.
+# Compatible with Unix and Git Bash on Windows.
+
+set -euo pipefail
+
+# we do NOT want to run in CI.
+if [[ "${CI:-}" == "1" ]]; then
+  exit 0
+fi
+
+# Allow manual skip: SKIP_HOOK=1 git push
+if [[ "${SKIP_HOOK:-}" == "1" ]]; then
+  echo "[pre-push] SKIP_HOOK=1 → skipping."
+  exit 0
+fi
+
+# Mapping: path-prefix | command | label
+# Edit commands to match the test/lint entry points if needed.
+# keep trailing slash on prefixes for unambiguous matching.
+read -r -d '' MAP <<'EOF' || true
+CommandService/|(cd CommandService && dotnet build)|CommandSrv
+PlatformService/|(cd PlatformService && dotnet build)|PlatformSrv
+Frontend/app1/|(cd Frontend/app1 && tsc --incremental false)|app1
+Frontend/app2/|(cd Frontend/app2 && tsc --incremental false)|app2
+EOF
+
+# ignore paths that should NOT trigger anything
+read -r -d '' IGNORE_PREFIXES <<'EOF' || true
+README.md
+LICENSE
+.gitignore
+EOF
+
+# Maximum parallel jobs (0 = no limit)
+MAX_PARALLEL_JOBS="${MAX_PARALLEL_JOBS:-0}"
+# Default branch to compare against for new branches
+DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
+# Enable verbose output
+VERBOSE="${VERBOSE:-0}"
+
+# Helper functions
+log() { printf "[pre-push] %s\n" "$*" >&2; }
+debug() { [[ "$VERBOSE" == "1" ]] && log "DEBUG: $*" || true; }
+error() { log "ERROR: $*" >&2; }
+
+# Create temp file
+create_temp() {
+  if command -v mktemp >/dev/null 2>&1; then
+    mktemp
+  else
+    local tmpfile=".tmp.$$.$RANDOM"
+    : > "$tmpfile"
+    echo "$tmpfile"
+  fi
+}
+
+# Clean up temp files on exit
+cleanup() {
+  rm -f "${temp_files[@]}" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+temp_files=()
+
+# Validate environment
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  error "Not in a git repository"
+  exit 1
+fi
+
+# Collect changed files for this push (handles multiple refs via stdin)
+tmp_changed="$(create_temp)"
+temp_files+=("$tmp_changed")
+
+# Function to get appropriate base for comparison
+get_comparison_base() {
+  local sha="$1"
+  local default_branch="$2"
+  
+  # Try to find a suitable base for comparison
+  if git rev-parse -q --verify "origin/$default_branch" >/dev/null 2>&1; then
+    base="$(git merge-base "$sha" "origin/$default_branch" 2>/dev/null || true)"
+    if [[ -n "$base" ]]; then
+      echo "$base"
+      return
+    fi
+  fi
+  
+  # Try without origin/ prefix
+  if git rev-parse -q --verify "$default_branch" >/dev/null 2>&1; then
+    base="$(git merge-base "$sha" "$default_branch" 2>/dev/null || true)"
+    if [[ -n "$base" ]]; then
+      echo "$base"
+      return
+    fi
+  fi
+  
+  # Last resort: compare against empty tree
+  git hash-object -t tree /dev/null
+}
+
+# Read from stdin; if nothing provided (edge cases), fall back to origin/main...HEAD
+stdin_had_lines=0
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+  # Empty lines guard (some git versions may emit blanks)
+  [[ -z "${local_sha:-}" || -z "${remote_sha:-}" ]] && continue
+  stdin_had_lines=1
+  
+  debug "Processing: local_ref=$local_ref local_sha=$local_sha remote_ref=$remote_ref remote_sha=$remote_sha"
+
+  if [[ "$remote_sha" =~ ^0+$ ]]; then
+    # New branch/first push
+    debug "New branch detected, finding merge base"
+    base="$(get_comparison_base "$local_sha" "$DEFAULT_BRANCH")"
+    git diff --name-only "$base" "$local_sha" -- >>"$tmp_changed" 2>/dev/null || true
+  else
+    # Regular push with existing remote
+    git diff --name-only "$remote_sha" "$local_sha" -- >>"$tmp_changed" 2>/dev/null || true
+  fi
+done
+
+if [[ $stdin_had_lines -eq 0 ]]; then
+  debug "No refs from stdin, using fallback comparison"
+  # Fallback when pre-push didn't pass ref lines (rare)
+  if git rev-parse -q --verify "origin/$DEFAULT_BRANCH" >/dev/null 2>&1; then
+    git diff --name-only "origin/$DEFAULT_BRANCH...HEAD" -- >>"$tmp_changed" 2>/dev/null || true
+  elif git rev-parse -q --verify "$DEFAULT_BRANCH" >/dev/null 2>&1; then
+    git diff --name-only "$DEFAULT_BRANCH...HEAD" -- >>"$tmp_changed" 2>/dev/null || true
+  else
+    error "Could not find base branch for comparison"
+    exit 1
+  fi
+fi
+
+# Normalize/dedupe changed files
+# changed_files="$(sed '/^\s*$/d' "$tmp_changed" 2>/dev/null | sort -u)"
+changed_files="$(sed -e '/^[[:space:]]*$/d' "$tmp_changed" 2>/dev/null | sort -u)"
+
+
+if [[ "$VERBOSE" == "1" && -n "$changed_files" ]]; then
+  debug "Changed files:"
+  echo "$changed_files" | sed 's/^/  /' >&2
+fi
+
+map_count=0
+prefixes=()
+commands=()
+labels=()
+
+while IFS= read -r line; do
+  [[ -z "$line" ]] && continue
+  # split "prefix|command|label"
+  IFS='|' read -r pfx cmd lbl <<<"$line"
+  # Trim whitespace
+  pfx="${pfx## }"
+  pfx="${pfx%% }"
+  cmd="${cmd## }"
+  cmd="${cmd%% }"
+  lbl="${lbl## }"
+  lbl="${lbl%% }"
+  
+  if [[ -n "$pfx" && -n "$cmd" && -n "$lbl" ]]; then
+    prefixes+=("$pfx")
+    commands+=("$cmd")
+    labels+=("$lbl")
+    map_count=$((map_count + 1))
+  fi
+done <<< "$MAP"
+
+ignore_prefixes=()
+while IFS= read -r ip; do
+  [[ -z "$ip" ]] && continue
+  # Trim whitespace
+  ip="${ip## }"
+  ip="${ip%% }"
+  ignore_prefixes+=("$ip")
+done <<< "$IGNORE_PREFIXES"
+
+debug "Loaded $map_count path mappings and ${#ignore_prefixes[@]} ignore patterns"
+
+is_ignored() {
+  local path="$1"
+  local ip
+  for ip in "${ignore_prefixes[@]}"; do
+    # Support both exact matches and prefix matches
+    if [[ "$path" == "$ip" || "$path" == "$ip"* ]]; then
+      debug "Path '$path' ignored by pattern '$ip'"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# store indexes into prefixes/commands/labels
+affected_indexes=() 
+
+if [[ "${RUN_ALL:-}" == "1" ]]; then
+  log "RUN_ALL=1 → Running all checks"
+  for ((i=0; i<map_count; i++)); do 
+    affected_indexes+=("$i")
+  done
+else
+  # Build set of affected indexes by scanning changed files
+  tmp_aff="$(create_temp)"
+  temp_files+=("$tmp_aff")
+
+  if [[ -n "${changed_files:-}" ]]; then
+    while IFS= read -r path; do
+      [[ -z "$path" ]] && continue
+      
+      # skip ignored
+      if is_ignored "$path"; then
+        continue
+      fi
+      
+      # Check against each prefix
+      for ((i=0; i<map_count; i++)); do
+        if [[ "$path" == "${prefixes[$i]}"* ]]; then
+          debug "Path '$path' matches prefix '${prefixes[$i]}'"
+          echo "$i" >> "$tmp_aff"
+        fi
+      done
+    done <<< "$changed_files"
+  fi
+
+  if [[ -f "$tmp_aff" && -s "$tmp_aff" ]]; then
+    while IFS= read -r idx; do 
+      [[ -n "$idx" ]] && affected_indexes+=("$idx")
+    done < <(sort -u "$tmp_aff")
+  fi
+fi
+
+# Exit early if no changes detected
+if [[ "${#affected_indexes[@]}" -eq 0 ]]; then
+  log "No Backend/Frontend app changes detected. Skipping tests/lints."
+  exit 0
+fi
+
+log "Detected changes in:"
+for idx in "${affected_indexes[@]}"; do
+  log "  - ${labels[$idx]} (${prefixes[$idx]})"
+done
+
+# Run tasks with job control
+run_command() {
+  local cmd="$1"
+  local lbl="$2"
+  local tmpout="$3"
+  local tmperr="$4"
+  
+  # Run command and capture output
+  if eval "$cmd" >"$tmpout" 2>"$tmperr"; then
+    # Success - show output with prefix
+    if [[ -s "$tmpout" ]]; then
+      sed "s/^/[$lbl] /" "$tmpout"
+    fi
+    if [[ -s "$tmperr" ]]; then
+      sed "s/^/[$lbl] /" "$tmperr" >&2
+    fi
+    return 0
+  else
+    # Failure - show output with prefix
+    if [[ -s "$tmpout" ]]; then
+      sed "s/^/[$lbl] /" "$tmpout"
+    fi
+    if [[ -s "$tmperr" ]]; then
+      sed "s/^/[$lbl] /" "$tmperr" >&2
+    fi
+    return 1
+  fi
+}
+
+pids=()
+names=()
+tmpouts=()
+tmperrs=()
+active_jobs=0
+
+for idx in "${affected_indexes[@]}"; do
+  cmd="${commands[$idx]}"
+  lbl="${labels[$idx]}"
+  
+  # Wait if we've reached max parallel jobs
+  if [[ "$MAX_PARALLEL_JOBS" -gt 0 ]]; then
+    while [[ $active_jobs -ge $MAX_PARALLEL_JOBS ]]; do
+      for i in "${!pids[@]}"; do
+        if ! kill -0 "${pids[$i]}" 2>/dev/null; then
+          wait "${pids[$i]}" 2>/dev/null || true
+          unset pids[$i]
+          active_jobs=$((active_jobs - 1))
+        fi
+      done
+      sleep 0.1
+    done
+  fi
+  
+  # Create temp files for output
+  tmpout="$(create_temp)"
+  tmperr="$(create_temp)"
+  temp_files+=("$tmpout" "$tmperr")
+  
+  # Announce
+  log "→ Running: $cmd"
+  
+  # Run in background
+  run_command "$cmd" "$lbl" "$tmpout" "$tmperr" &
+  
+  pid=$!
+  pids+=("$pid")
+  names+=("$lbl")
+  tmpouts+=("$tmpout")
+  tmperrs+=("$tmperr")
+  active_jobs=$((active_jobs + 1))
+done
+
+# Wait for all jobs and track results
+fail=0
+failed_tasks=()
+
+for i in "${!pids[@]}"; do
+  pid="${pids[$i]}"
+  lbl="${names[$i]}"
+  
+  if ! wait "$pid"; then
+    log "✗ $lbl: failed."
+    failed_tasks+=("$lbl")
+    fail=1
+  else
+    log "✓ $lbl: passed."
+  fi
+done
+
+# Final status
+if [[ $fail -ne 0 ]]; then
+  log "One or more checks failed:"
+  for task in "${failed_tasks[@]}"; do
+    log "  - $task"
+  done
+  log "Push aborted. Fix the issues and try again."
+  log "To skip this hook temporarily, use: SKIP_HOOK=1 git push or git push --no-verify"
+  exit 1
+fi
+
+log "All selected checks passed. ✓"
+exit 0
