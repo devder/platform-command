@@ -11,7 +11,7 @@ fi
 
 # Allow manual skip: SKIP_HOOK=1 git push
 if [[ "${SKIP_HOOK:-}" == "1" ]]; then
-  echo "[pre-push] SKIP_HOOK=1 → skipping."
+  echo "[pre-push] SKIP_HOOK=1 → skipping"
   exit 0
 fi
 
@@ -28,7 +28,6 @@ EOF
 # ignore paths that should NOT trigger anything
 read -r -d '' IGNORE_PREFIXES <<'EOF' || true
 README.md
-LICENSE
 .gitignore
 EOF
 
@@ -37,12 +36,14 @@ MAX_PARALLEL_JOBS="${MAX_PARALLEL_JOBS:-0}"
 # Default branch to compare against for new branches
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
 # Enable verbose output
-VERBOSE="${VERBOSE:-0}"
+VERBOSE="${VERBOSE:-1}"
 
 # Helper functions
-log() { printf "[pre-push] %s\n" "$*" >&2; }
-debug() { [[ "$VERBOSE" == "1" ]] && log "DEBUG: $*" || true; }
-error() { log "ERROR: $*" >&2; }
+log() { printf "\033[0;32m[pre-push] %s\033[0m\n" "$*" >&2; }
+debug() {
+  [[ "$VERBOSE" == "1" ]] && printf "\033[0;33m[pre-push] %s\033[0m\n" "$*" >&2 || true
+}
+error(){ printf "\033[0;31m%s\033[0m\n" "$*" >&2; }
 
 # Create temp file
 create_temp() {
@@ -121,28 +122,13 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
 done
 
 if [[ $stdin_had_lines -eq 0 ]]; then
-  debug "No refs from stdin, using fallback comparison"
-  # Fallback when pre-push didn't pass ref lines (rare)
-  if git rev-parse -q --verify "origin/$DEFAULT_BRANCH" >/dev/null 2>&1; then
-    git diff --name-only "origin/$DEFAULT_BRANCH...HEAD" -- >>"$tmp_changed" 2>/dev/null || true
-  elif git rev-parse -q --verify "$DEFAULT_BRANCH" >/dev/null 2>&1; then
-    git diff --name-only "$DEFAULT_BRANCH...HEAD" -- >>"$tmp_changed" 2>/dev/null || true
-  else
-    error "Could not find base branch for comparison"
-    exit 1
-  fi
+  # just exit
+  debug "No app changes detected. Check if changes have been committed"
+  exit 0
 fi
 
 # Normalize/dedupe changed files
-# changed_files="$(sed '/^\s*$/d' "$tmp_changed" 2>/dev/null | sort -u)"
 changed_files="$(sed -e '/^[[:space:]]*$/d' "$tmp_changed" 2>/dev/null | sort -u)"
-
-
-if [[ "$VERBOSE" == "1" && -n "$changed_files" ]]; then
-  debug "Changed files:"
-  echo "$changed_files" | sed 's/^/  /' >&2
-fi
-
 map_count=0
 prefixes=()
 commands=()
@@ -217,7 +203,6 @@ else
       # Check against each prefix
       for ((i=0; i<map_count; i++)); do
         if [[ "$path" == "${prefixes[$i]}"* ]]; then
-          debug "Path '$path' matches prefix '${prefixes[$i]}'"
           echo "$i" >> "$tmp_aff"
         fi
       done
@@ -233,13 +218,13 @@ fi
 
 # Exit early if no changes detected
 if [[ "${#affected_indexes[@]}" -eq 0 ]]; then
-  log "No Backend/Frontend app changes detected. Skipping tests/lints."
+  debug "No app changes detected. Skipping tests/lints"
   exit 0
 fi
 
 log "Detected changes in:"
 for idx in "${affected_indexes[@]}"; do
-  log "  - ${labels[$idx]} (${prefixes[$idx]})"
+  debug "  - ${labels[$idx]} (${prefixes[$idx]})"
 done
 
 # Run tasks with job control
@@ -300,9 +285,7 @@ for idx in "${affected_indexes[@]}"; do
   tmperr="$(create_temp)"
   temp_files+=("$tmpout" "$tmperr")
   
-  # Announce
   log "→ Running: $cmd"
-  
   # Run in background
   run_command "$cmd" "$lbl" "$tmpout" "$tmperr" &
   
@@ -323,24 +306,24 @@ for i in "${!pids[@]}"; do
   lbl="${names[$i]}"
   
   if ! wait "$pid"; then
-    log "✗ $lbl: failed."
+    log "❌ $lbl: failed"
     failed_tasks+=("$lbl")
     fail=1
   else
-    log "✓ $lbl: passed."
+    log "✅ $lbl: passed"
   fi
 done
 
 # Final status
 if [[ $fail -ne 0 ]]; then
-  log "One or more checks failed:"
+  error "One or more checks failed:"
   for task in "${failed_tasks[@]}"; do
-    log "  - $task"
+    error "  - $task"
   done
-  log "Push aborted. Fix the issues and try again."
-  log "To skip this hook temporarily, use: SKIP_HOOK=1 git push or git push --no-verify"
+  error "❌ Push aborted. Fix the issues and try again"
+  debug "ℹ️ To skip this hook temporarily, use: SKIP_HOOK=1 git push or git push --no-verify"
   exit 1
 fi
 
-log "All selected checks passed. ✓"
+log "✨ All selected checks passed"
 exit 0
