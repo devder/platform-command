@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Runs selective tests/lints for changed apps on pre-push.
 # Compatible with Unix and Git Bash on Windows.
+# ========= POSSIBLE ENV VARIABLES ==================
+# CI – when exported as 1, the hook exits immediately
+# SKIP_HOOK – when set to 1, does not run anything
+# MAX_PARALLEL_JOBS – overrides the per-run parallelism cap (default 0, meaning no cap)
+# DEFAULT_BRANCH – changes the branch used as the comparison base for new or ref-less pushes (default main)
+# VERBOSE – toggles debug logging; defaults to 1 for chatty output
+# RUN_ALL – when set to 1, the hook runs every mapped command regardless of detected changes (can be slow and resource intensive)
 
 set -euo pipefail
 
@@ -320,7 +327,7 @@ if [[ $fail -ne 0 ]]; then
     error "  - $task"
   done
   error "❌ Push aborted. Fix the issues and try again"
-  debug "ℹ️ To skip this hook temporarily, use: SKIP_HOOK=1 git push or git push --no-verify"
+  debug "ℹ️ To skip this hook temporarily, run: SKIP_HOOK=1 git push OR git push --no-verify"
   exit 1
 fi
 
