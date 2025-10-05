@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platforms-deployment
+  labels:
+    app: platforms-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: platforms-api
+  template:
+    metadata:
+      labels:
+        app: platforms-api
+    spec:
+      containers:
+        - name: platforms-api
+          image: devder/platform-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              name: http
+            - containerPort: 90
+              name: grpc
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+
+# Create a ClusterIP service for the platforms API
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platforms-clusterip-srv
+  labels:
+    app: platforms-api
+spec:
+  selector:
+    app: platforms-api
+  ports:
+    - name: platforms-api
+      protocol: TCP
+      port: 80
+      targetPort: http
+    - name: platforms-grpc
+      protocol: TCP
+      port: 90
+      targetPort: grpc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platforms-service
+  labels:
+    app: platforms-api
+spec:
+  type: NodePort
+  selector:
+    app: platforms-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: http

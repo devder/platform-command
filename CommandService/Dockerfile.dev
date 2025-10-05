@@ -9,8 +9,8 @@ RUN dotnet restore
 # Copy everything else
 COPY . ./
 
+# Expose port 80
 EXPOSE 80
-EXPOSE 90
 
 # Use dotnet watch to automatically restart on changes
-ENTRYPOINT ["dotnet", "watch", "run", "--urls", "http://+:80;http://+:90"]
+ENTRYPOINT ["dotnet", "watch", "run", "--urls", "http://+:80"]

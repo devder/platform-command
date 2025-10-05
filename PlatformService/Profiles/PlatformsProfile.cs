@@ -1,6 +1,7 @@
 using AutoMapper;
 using PlatformService.Dtos;
 using PlatformService.Models;
+using PlatformService.Protos;
 
 namespace PlatformService.Profiles;
 
@@ -11,5 +12,8 @@ public class PlatformsProfile : Profile
         // Source -> Target
         CreateMap<Platform, PlatformReadDto>();
         CreateMap<PlatformCreateDto, Platform>();
+        CreateMap<PlatformReadDto, PlatformPublishedDto>();
+        CreateMap<Platform, GrpcPlatformModel>()
+            .ForMember(dest => dest.PlatformId, opt => opt.MapFrom(src => src.Id)); // this is saying map the platformId to the src id
     }
 }

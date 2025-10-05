@@ -13,14 +13,13 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     platform: linux/amd64
-    container_name: les_platform_service
+    container_name: les_command_service
     volumes:
       - .:/app
       - bin-data:/app/bin
       - obj-data:/app/obj
     ports:
-      - "8080:80"
-      - "9090:90"
+      - "8081:80"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:80;http://+:90
+      - ASPNETCORE_URLS=http://+:80
